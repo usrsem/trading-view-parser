@@ -2,7 +2,6 @@ from aiohttp import ClientSession
 from asyncio import create_task, gather, sleep
 from config import base_page_url, base_ideas_url
 from loguru import logger as log
-from requests_html import HTMLSession
 from typing import Any
 from trading_types import ParserConfig, Lang
 
@@ -20,7 +19,6 @@ class TradingViewParser:
     def __init__(self, config: ParserConfig, chunk_size: int = 10):
         self.config: ParserConfig = config
         self.chunk_size = chunk_size
-        self.session = HTMLSession()
         self.pages: dict[int, tuple[Any]] = {}
 	
 

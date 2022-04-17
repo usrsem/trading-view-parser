@@ -7,7 +7,7 @@
 
 ### Start parsing
 ```
-poetry build
+poetry install
 poetry run app
 ```
 

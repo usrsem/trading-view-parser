@@ -16,7 +16,7 @@ def _create_tv_parser() -> TradingViewScraper:
 
 def test_page_num_generator() -> None:
     tv_parser = _create_tv_parser()
-    undertest = tv_parser.page_num_generator()
+    undertest = tv_parser._page_num_generator()
     after = [i for i in undertest]
     mustbe = [i+1 for i in range(tv_parser.config.pages_count)]
     assert after == mustbe, f"{after=}, {mustbe=}"
@@ -25,21 +25,21 @@ def test_page_num_generator() -> None:
 def test_batches_iterator() -> None:
     # Pages count % batch size == 0
     tv_parser = _create_tv_parser()
-    after = tv_parser.batches_iterator()
+    after = tv_parser._batches_iterator()
     mustbe = tuple([10, 10])
     assert after == mustbe, f"{after=}, {mustbe=}"
 
     # Pages count % batch size > 0
     tv_parser = _create_tv_parser()
     tv_parser.config = tv_parser.config._replace(pages_count=25)
-    after = tv_parser.batches_iterator()
+    after = tv_parser._batches_iterator()
     mustbe = tuple([10, 10, 5])
     assert after == mustbe, f"{after=}, {mustbe=}"
 
     # Pages count < batch size
     tv_parser = _create_tv_parser()
     tv_parser.config = tv_parser.config._replace(batch_size=tv_parser.config.pages_count + 10)
-    after = tv_parser.batches_iterator()
+    after = tv_parser._batches_iterator()
     mustbe = tuple([tv_parser.config.pages_count])
     assert after == mustbe, f"{after=}, {mustbe=}"
 

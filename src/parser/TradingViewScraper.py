@@ -3,17 +3,13 @@ import time
 from aiohttp import ClientSession
 from asyncio import create_task, gather, sleep
 from asyncio.tasks import Task
-from parser.config import base_page_url, base_ideas_url, domain
-from parser.types import Lang, Html
+from parser.config import base_ideas_url, domain
+from parser.types import Html
 from parser.models import Idea, ParserConfig
 from parser.parse_funcs import parse_cards, get_card_links
+from parser.IdeasSaver import IdeasSaver
 from loguru import logger as log
 from typing import Generator
-
-
-def page_link_generator(lang: Lang, page_num: int) -> str:
-    page: str = "" if page_num == 1 else f"page-{page_num}/"
-    return base_page_url.format(lang=lang.value, page=page)
 
 
 class TradingParserException(Exception): pass
@@ -23,16 +19,23 @@ class TradingViewScraper:
     def __init__(self, config: ParserConfig) -> None:
         self.config: ParserConfig = config
         self.ideas: list[Idea] = []
+        self.saver: IdeasSaver = IdeasSaver()
 
-    async def load_ideas(self) -> None:
+
+    async def start(self) -> None:
+        await self._load_ideas()
+        self.saver.save2csv(self.ideas)
+
+
+    async def _load_ideas(self) -> None:
         log.info("Starting parsing")
-        page_nums: Generator[int, None, None] = self.page_num_generator()
+        page_nums: Generator[int, None, None] = self._page_num_generator()
         start = time.monotonic()
 
         async with ClientSession() as session:
-            for batch_size in self.batches_iterator():
+            for batch_size in self._batches_iterator():
                 tasks: list[Task] = [
-                    create_task(self.get_cards(session, next(page_nums)))
+                    create_task(self._get_cards(session, next(page_nums)))
                     for _ in range(batch_size)
                 ]
 
@@ -46,11 +49,11 @@ class TradingViewScraper:
         log.info(f"Loaded {len(self.ideas)} ideas")
 
 
-    def page_num_generator(self) -> Generator[int, None, None]:
+    def _page_num_generator(self) -> Generator[int, None, None]:
         for page_num in range(self.config.pages_count):
             yield page_num + 1
 
-    def batches_iterator(self) -> tuple[int, ...]:
+    def _batches_iterator(self) -> tuple[int, ...]:
         if self.config.batch_size > self.config.pages_count:
             return tuple([self.config.pages_count])
 
@@ -64,32 +67,35 @@ class TradingViewScraper:
 
         return tuple(res)
 
-    async def get_cards(
+    async def _get_cards(
         self,
         session: ClientSession,
         page_num: int
     ) -> tuple[Html, ...]:
-        page_url: str = self.ideas_link_generator(page_num)
+        page_url: str = self._ideas_link_generator(page_num)
 
-        page: Html = await self.load_url(session, page_url)
+        page: Html = await self._load_url(session, page_url)
         links: list[str] = get_card_links(page)
         base_url: str = domain.format(lang=self.config.lang.value)
 
         tasks: list[Task] = [
-            create_task(self.load_url(session, base_url + link))
+            create_task(self._load_url(session, base_url + link))
             for link in links
         ]
 
         return await gather(*tasks)
 
 
-    async def load_url(self, session: ClientSession, url: str) -> Html:
+    async def _load_url(self, session: ClientSession, url: str) -> Html:
         async with session.get(url) as r:
             return await r.text()
 
 
-    def ideas_link_generator(self, page_num: int) -> str:
+    def _ideas_link_generator(self, page_num: int) -> str:
         page: str = "" if page_num == 1 else f"page-{page_num}/"
         return base_ideas_url.format(
-            lang=self.config.lang.value, asset=self.config.asset.lower(), page=page)
+            lang=self.config.lang.value,
+            asset=self.config.asset.lower(),
+            page=page
+        )
 

@@ -40,6 +40,7 @@ class TradingViewScraper:
                     self.ideas.extend(parse_cards(cards))
     
                 await sleep(self.config.sleep_duration)
+                log.info(f"Parsed {batch_size} pages")
 
         log.info(f"Time passed {int((time.monotonic() - start) // 60)} min")
         log.info(f"Loaded {len(self.ideas)} ideas")

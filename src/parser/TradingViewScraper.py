@@ -1,3 +1,5 @@
+import time
+
 from aiohttp import ClientSession
 from asyncio import create_task, gather, sleep
 from asyncio.tasks import Task
@@ -20,11 +22,12 @@ class TradingParserException(Exception): pass
 class TradingViewScraper:
     def __init__(self, config: ParserConfig) -> None:
         self.config: ParserConfig = config
-
+        self.ideas: list[Idea] = []
 
     async def load_ideas(self) -> None:
         log.info("Starting parsing")
         page_nums: Generator[int, None, None] = self.page_num_generator()
+        start = time.monotonic()
 
         async with ClientSession() as session:
             for batch_size in self.batches_iterator():
@@ -33,17 +36,13 @@ class TradingViewScraper:
                     for _ in range(batch_size)
                 ]
 
-                pages: tuple[tuple[Html], ...] = await gather(*tasks)
-                log.info(f"Loaded {len(pages)} pages")
-
-                ideas: list[list[Idea]] = [
-                    parse_cards(cards)
-                    for cards in pages
-                ]
-
+                for cards in await gather(*tasks):
+                    self.ideas.extend(parse_cards(cards))
+    
                 await sleep(self.config.sleep_duration)
 
-        log.info("Ending parsing")
+        log.info(f"Time passed {int((time.monotonic() - start) // 60)} min")
+        log.info(f"Loaded {len(self.ideas)} ideas")
 
 
     def page_num_generator(self) -> Generator[int, None, None]:
@@ -68,11 +67,8 @@ class TradingViewScraper:
         self,
         session: ClientSession,
         page_num: int
-    ) -> tuple[Html]:
-
-        log.info(f"Loading page {page_num}")
+    ) -> tuple[Html, ...]:
         page_url: str = self.ideas_link_generator(page_num)
-        log.info(f"Loading page {page_url}")
 
         page: Html = await self.load_url(session, page_url)
         links: list[str] = get_card_links(page)
@@ -84,6 +80,7 @@ class TradingViewScraper:
         ]
 
         return await gather(*tasks)
+
 
     async def load_url(self, session: ClientSession, url: str) -> Html:
         async with session.get(url) as r:

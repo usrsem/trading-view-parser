@@ -26,12 +26,12 @@ def parse_card(card: Html) -> Optional[Idea]:
         exchange, ticker = _get_exchange_with_ticker(soup)
         res = Idea(
             username=_get_username(soup),
-            description=_get_description(soup),
             likes_count=_get_likes_count(soup),
             date=_get_date(soup),
             directon=_get_direction(soup),
             exchange=exchange,
-            ticker=ticker
+            ticker=ticker,
+            description=_get_description(soup)
         )
     except ParsingException as e:
         log.warning(e)
@@ -108,15 +108,6 @@ def _get_likes_count(soup: BeautifulSoup) -> int:
     raise ParsingException("Can't find likes count in card")
 
 
-def _get_description(soup: BeautifulSoup) -> str:
-    description = soup.find("div", {"class": "tv-chart-view__description-wrap"})
-
-    if description is not None:
-        return description.text
-
-    raise ParsingException("Can't find description in card")
-
-
 def _get_direction(soup: BeautifulSoup) -> Direction:
     direction = soup.find("span", {"class": "badge-yHuWj4ze"})
 
@@ -124,4 +115,13 @@ def _get_direction(soup: BeautifulSoup) -> Direction:
         return Direction.LONG if "long" in direction else Direction.SHORT
 
     return Direction.NOT_FOUND
+
+
+def _get_description(soup: BeautifulSoup) -> str:
+    description = soup.find("div", {"class": "tv-chart-view__description-wrap"})
+
+    if description is not None:
+        return description.text.replace("\n", " ")
+
+    raise ParsingException("Can't find description in card")
 

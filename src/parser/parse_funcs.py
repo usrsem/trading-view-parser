@@ -16,7 +16,6 @@ def parse_cards(cards: tuple[Html, ...]) -> list[Idea]:
         if (idea := parse_card(card)) is not None:
             ideas.append(idea)
 
-    log.info(f"Parsed {len(ideas)} cards")
     return ideas
 
 
@@ -35,7 +34,7 @@ def parse_card(card: Html) -> Optional[Idea]:
             ticker=ticker
         )
     except ParsingException as e:
-        log.error(e)
+        log.warning(e)
         return None
 
     return res
@@ -73,6 +72,7 @@ def _get_username(soup: BeautifulSoup) -> str:
 
     raise ParsingException("Can't find username in card") 
 
+
 def _get_exchange_with_ticker(soup: BeautifulSoup) -> tuple[str, str]:
     data = soup.find("a", {"class": "tv-chart-view__symbol--desc"})
     if data is not None:
@@ -95,6 +95,7 @@ def _get_date(soup: BeautifulSoup) -> datetime:
 
     raise ParsingException("Can't find date in card")
 
+
 def _get_likes_count(soup: BeautifulSoup) -> int:
     likes = soup.find("span", {"class": "tv-card-social-item__count"})
 
@@ -106,6 +107,7 @@ def _get_likes_count(soup: BeautifulSoup) -> int:
 
     raise ParsingException("Can't find likes count in card")
 
+
 def _get_description(soup: BeautifulSoup) -> str:
     description = soup.find("div", {"class": "tv-chart-view__description-wrap"})
 
@@ -113,6 +115,7 @@ def _get_description(soup: BeautifulSoup) -> str:
         return description.text
 
     raise ParsingException("Can't find description in card")
+
 
 def _get_direction(soup: BeautifulSoup) -> Direction:
     direction = soup.find("span", {"class": "badge-yHuWj4ze"})

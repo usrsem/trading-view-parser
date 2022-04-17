@@ -9,7 +9,7 @@ from parser.models import Idea, ParserConfig
 from parser.parse_funcs import parse_card, get_card_links
 from parser.IdeasSaver import IdeasSaver
 from loguru import logger as log
-from typing import Generator
+from typing import Generator, Optional
 
 
 class TradingParserException(Exception): pass
@@ -74,18 +74,25 @@ class TradingViewScraper:
 
         page: Html = await self._load_url(session, page_url)
         links: list[str] = get_card_links(page)
-        base_url: str = domain.format(lang=self.config.lang.value)
 
         tasks: list[Task] = [
-            create_task(self._load_url(session, base_url + link))
+            create_task(self._process_card(session, link))
             for link in links
         ]
 
         log.info(f"Loading page {page_num}")
-        for card in await gather(*tasks):
-            if (idea := parse_card(card)) is not None:
+        for idea in await gather(*tasks):
+            if idea is not None:
                 self.ideas.append(idea)
     
+    async def _process_card(
+        self,
+        session: ClientSession,
+        link: str
+    ) -> Optional[Idea]:
+        base_url: str = domain.format(lang=self.config.lang.value)
+        card: Html =  await self._load_url(session, base_url + link)
+        return parse_card(card)
 
 
     async def _load_url(self, session: ClientSession, url: str) -> Html:

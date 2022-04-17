@@ -5,13 +5,14 @@ from parser.types import Asset, Lang, Direction
 
 class Idea(NamedTuple):
     username: str
-    description: str
     likes_count: int
     date: datetime
     # tags: tuple[str]
     directon: Direction
     exchange: str
     ticker: str
+    description: str
+    # commetns: list[str]
 
 
 class ParserConfig(NamedTuple):

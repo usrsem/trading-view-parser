@@ -6,7 +6,7 @@ from asyncio.tasks import Task
 from parser.config import base_ideas_url, domain
 from parser.types import Html
 from parser.models import Idea, ParserConfig
-from parser.parse_funcs import parse_cards, get_card_links
+from parser.parse_funcs import parse_card, get_card_links
 from parser.IdeasSaver import IdeasSaver
 from loguru import logger as log
 from typing import Generator
@@ -35,13 +35,11 @@ class TradingViewScraper:
         async with ClientSession() as session:
             for batch_size in self._batches_iterator():
                 tasks: list[Task] = [
-                    create_task(self._get_cards(session, next(page_nums)))
+                    create_task(self._process_page(session, next(page_nums)))
                     for _ in range(batch_size)
                 ]
 
-                for cards in await gather(*tasks):
-                    self.ideas.extend(parse_cards(cards))
-    
+                await gather(*tasks)
                 await sleep(self.config.sleep_duration)
                 log.info(f"Parsed {batch_size} pages")
 
@@ -67,11 +65,11 @@ class TradingViewScraper:
 
         return tuple(res)
 
-    async def _get_cards(
+    async def _process_page(
         self,
         session: ClientSession,
         page_num: int
-    ) -> tuple[Html, ...]:
+    ) -> None:
         page_url: str = self._ideas_link_generator(page_num)
 
         page: Html = await self._load_url(session, page_url)
@@ -83,7 +81,11 @@ class TradingViewScraper:
             for link in links
         ]
 
-        return await gather(*tasks)
+        log.info(f"Loading page {page_num}")
+        for card in await gather(*tasks):
+            if (idea := parse_card(card)) is not None:
+                self.ideas.append(idea)
+    
 
 
     async def _load_url(self, session: ClientSession, url: str) -> Html:

@@ -1,4 +1,5 @@
 from datetime import datetime
+from typing import Optional
 from bs4 import BeautifulSoup
 from datetime import datetime
 from parser.models import Idea
@@ -10,24 +11,32 @@ class ParsingException(Exception): pass
 
 
 def parse_cards(cards: tuple[Html, ...]) -> list[Idea]:
-    return [parse_card(card) for card in cards]
+    ideas = []
+    for card in cards:
+        if (idea := parse_card(card)) is not None:
+            ideas.append(idea)
+
+    log.info(f"Parsed {len(ideas)} cards")
+    return ideas
 
 
-def parse_card(card: Html) -> Idea:
+def parse_card(card: Html) -> Optional[Idea]:
     soup: BeautifulSoup = BeautifulSoup(card, "html.parser")
-    exchange, ticker = _get_exchange_with_ticker(soup)
 
-    res = Idea(
-        username=_get_username(soup),
-        description=_get_description(soup),
-        likes_count=_get_likes_count(soup),
-        date=_get_date(soup),
-        directon=_get_direction(soup),
-        exchange=exchange,
-        ticker=ticker
-    )
-
-    print(f"{res.username = }")
+    try:
+        exchange, ticker = _get_exchange_with_ticker(soup)
+        res = Idea(
+            username=_get_username(soup),
+            description=_get_description(soup),
+            likes_count=_get_likes_count(soup),
+            date=_get_date(soup),
+            directon=_get_direction(soup),
+            exchange=exchange,
+            ticker=ticker
+        )
+    except ParsingException as e:
+        log.error(e)
+        return None
 
     return res
 
